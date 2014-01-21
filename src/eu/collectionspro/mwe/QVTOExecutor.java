@@ -14,6 +14,7 @@ package eu.collectionspro.mwe;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.core.runtime.IStatus;
@@ -88,20 +89,29 @@ public class QVTOExecutor extends AbstractWorkflowComponent {
 		// create executor for the given transformation
 		TransformationExecutor executor = new TransformationExecutor(transformation);
 
+		boolean isList = false;
+		
 		ModelExtent[] extents = new ModelExtent[slots.size()];
 		int i = 0;
 		for (ModelSlot slot : slots) {
 			extents[i] = new BasicModelExtent();
 			if (slot.isInput) {
 				Object slotContent = ctx.get(slot.name);
-				if (slotContent == null || !(slotContent instanceof List<?>))
+				if (slotContent == null) {
 					issues.addError("Input slot '" + slot.name
-							+ "' is empty or contains iappropriate object!");
-				else {
-					if (((List<EObject>) slotContent).isEmpty())
+							+ "' is empty!");
+				} else if(slotContent instanceof List<?>) {
+					if (((List<EObject>) slotContent).isEmpty()) {
 						issues.addWarning("Model in input slot '" + slot.name
 								+ "' does NOT contain any objects");
+					}
 					extents[i].setContents((List<EObject>) slotContent);
+					isList = true;
+				} else if(slotContent instanceof EObject) {
+					extents[i].setContents(Collections.<EObject>singletonList((EObject)slotContent));
+				} else {
+					issues.addWarning("Model in input slot '" + slot.name
+							+ "' does NOT contain a valid object");
 				}
 			}
 			i += 1;
@@ -147,7 +157,7 @@ public class QVTOExecutor extends AbstractWorkflowComponent {
 			i = 0;
 			for (ModelSlot slot : slots) {
 				if (slot.isOutput)
-					ctx.set(slot.name, extents[i].getContents());
+					ctx.set(slot.name, extents[i].getContents().get(0));
 				i += 1;
 			}
 		} else {
